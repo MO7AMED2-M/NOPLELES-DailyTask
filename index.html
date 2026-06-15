@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ar" lang="en" dir="rtl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOPELES</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toast-hub" class="toast-hub"></div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="task-modal-title">📋 تفاصيل المهمة</div>
+      <button class="modal-close" onclick="Q.Modal.close('task-modal')"><i class="fa fa-xmark"></i></button>
+    </div>
+    <form id="task-modal-form" onsubmit="Q.Tasks.saveModal(event)">
+      <input type="hidden" id="m-id">
+      <div class="form-grid">
+        <div class="fg full"><label>اسم المهمة</label><input type="text" id="m-title" required></div>
+        <div class="fg full"><label>الوصف</label><textarea id="m-desc"></textarea></div>
+        <div class="fg"><label>التصنيف</label><input type="text" id="m-cat" required></div>
+        <div class="fg"><label>الأولوية</label>
+          <select id="m-priority"><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
+        </div>
+        <div class="fg"><label>الحالة</label>
+          <select id="m-status"><option value="Not Started">Not Started</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option></select>
+        </div>
+        <div class="fg"><label>التاريخ</label><input type="date" id="m-deadline" required></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="Q.Modal.close('task-modal')">إلغاء</button>
+        <button type="submit" class="btn"><i class="fa fa-save"></i> حفظ</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="Q.Tasks.deleteFromModal()"><i class="fa fa-trash"></i> حذف</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Modal -->
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)"><i class="fa fa-triangle-exclamation"></i> إعادة ضبط النظام</div>
+      <button class="modal-close" onclick="Q.Modal.close('reset-modal')"><i class="fa fa-xmark"></i></button>
+    </div>
+    <div class="reset-options">
+      <div class="reset-option selected" id="reset-opt-soft" onclick="Q.Settings.selectReset('soft')">
+        <h4>🔄 Soft Reset</h4>
+        <p>إعادة ضبط الإعدادات فقط (اللغة، السمة، التفضيلات) مع الحفاظ على المهام</p>
+      </div>
+      <div class="reset-option" id="reset-opt-full" onclick="Q.Settings.selectReset('full')">
+        <h4>💥 Full Reset</h4>
+        <p>مسح كامل لجميع البيانات والمهام والسجلات والعودة للحالة الأولى</p>
+      </div>
+    </div>
+    <div class="reset-warning"><i class="fa fa-circle-exclamation" style="margin-top:2px;flex-shrink:0;"></i> <span id="reset-warn-text">سيتم إعادة ضبط الإعدادات فقط. المهام ستبقى محفوظة.</span></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Q.Modal.close('reset-modal')">إلغاء</button>
+      <button class="btn btn-danger" onclick="Q.Settings.executeReset()"><i class="fa fa-rotate-left"></i> تأكيد الإعادة</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon"><i class="fa fa-cube"></i></div>
+      <div><div class="brand-text">NOPELES</div></div>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav-btn active" onclick="Q.Router.go('dashboard',this)"><i class="fa fa-chart-line"></i> <span data-i18n="nav-dash">لوحة القيادة</span></button>
+      <button class="nav-btn" onclick="Q.Router.go('tasks',this)"><i class="fa fa-folder-open"></i> <span data-i18n="nav-tasks">المهام</span></button>
+      <div class="nav-label">SYSTEM</div>
+      <button class="nav-btn" onclick="Q.Router.go('settings',this)"><i class="fa fa-gear"></i> <span data-i18n="nav-settings">الإعدادات</span></button>
+    </nav>
+    <div class="sidebar-footer">v6.0 // Stable Build</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div><h1 data-i18n="dash-title">📈 لوحة القيادة</h1><p data-i18n="dash-sub">مراقبة حية وتحليلات إنتاجية فورية</p></div>
+        <button class="btn btn-ghost btn-sm" onclick="Q.Dashboard.refresh()"><i class="fa fa-rotate-right"></i> تحديث</button>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="kpi-strip">
+        <div class="kpi-card" style="--kpi-accent:var(--accent);--kpi-color:var(--accent-dim)">
+          <i class="fa fa-list-check kpi-icon"></i>
+          <div class="kpi-num" id="kpi-total">0</div>
+          <div class="kpi-label" data-i18n="kpi-total">إجمالي المهام</div>
+          <div class="kpi-sub" id="kpi-total-sub">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--green);--kpi-color:var(--green-dim)">
+          <i class="fa fa-check-double kpi-icon"></i>
+          <div class="kpi-num" id="kpi-done">0</div>
+          <div class="kpi-label" data-i18n="kpi-done">مكتملة</div>
+          <div class="kpi-sub" id="kpi-done-sub">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--yellow);--kpi-color:var(--yellow-dim)">
+          <i class="fa fa-spinner kpi-icon"></i>
+          <div class="kpi-num" id="kpi-progress">0</div>
+          <div class="kpi-label" data-i18n="kpi-progress">قيد التنفيذ</div>
+          <div class="kpi-sub" id="kpi-today-sub">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-accent:var(--red);--kpi-color:var(--red-dim)">
+          <i class="fa fa-circle-exclamation kpi-icon"></i>
+          <div class="kpi-num" id="kpi-overdue">0</div>
+          <div class="kpi-label" data-i18n="kpi-overdue">متأخرة</div>
+          <div class="kpi-sub" id="kpi-overdue-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Analytics Row -->
+      <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:16px;">
+        <!-- Productivity -->
+        <div class="panel panel-sm">
+          <div class="panel-header"><div class="panel-title"><i class="fa fa-bolt" style="color:var(--accent)"></i> <span data-i18n="prod-score">الإنتاجية</span></div></div>
+          <div class="productivity-widget">
+            <div class="ring-wrap">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="38" stroke="var(--border)" stroke-width="8" fill="none"/>
+                <circle id="prod-ring" cx="50" cy="50" r="38" stroke="var(--accent)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="239" style="transition:stroke-dashoffset 0.6s ease"/>
+              </svg>
+              <div class="ring-text"><div class="ring-pct" id="prod-pct">0%</div><div class="ring-meta">SCORE</div></div>
+            </div>
+            <div class="ring-info">
+              <h3 data-i18n="weekly-stats">إحصائيات الأسبوع</h3>
+              <div class="progress-row"><span style="font-size:0.75rem;" data-i18n="high-tasks">عالية</span><span id="r-high" style="font-weight:700;font-size:0.8rem;color:var(--red)">0</span></div>
+              <div class="progress-row"><span style="font-size:0.75rem;" data-i18n="med-tasks">متوسطة</span><span id="r-med" style="font-weight:700;font-size:0.8rem;color:var(--yellow)">0</span></div>
+              <div class="progress-row"><span style="font-size:0.75rem;" data-i18n="low-tasks">منخفضة</span><span id="r-low" style="font-weight:700;font-size:0.8rem;color:var(--green)">0</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Weekly Chart -->
+        <div class="panel panel-sm">
+          <div class="panel-header"><div class="panel-title"><i class="fa fa-chart-bar" style="color:var(--green)"></i> <span data-i18n="weekly-chart">منجزات الأسبوع</span></div></div>
+          <div class="week-chart" id="week-chart"></div>
+        </div>
+      </div>
+
+      <!-- Achievements -->
+      <div class="panel panel-sm">
+        <div class="panel-header"><div class="panel-title"><i class="fa fa-trophy" style="color:var(--yellow)"></i> <span data-i18n="achievements">الإنجازات</span></div></div>
+        <div class="achievement-strip" id="achievements"></div>
+      </div>
+
+      <!-- Kanban Board -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fa fa-columns" style="color:var(--accent)"></i> <span data-i18n="kanban-title">لوحة المهام</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="Q.Router.go('tasks',document.querySelector('[onclick*=tasks]'))"><i class="fa fa-plus"></i> <span data-i18n="btn-add">مهمة جديدة</span></button>
+        </div>
+        <div class="kanban-board" id="kanban-board"></div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fa fa-terminal"></i> <span data-i18n="activity-log">سجل النشاط</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="Q.Storage.clearLogs()"><i class="fa fa-trash"></i> <span data-i18n="btn-clear">مسح</span></button>
+        </div>
+        <div id="log-container"></div>
+      </div>
+    </section>
+
+    <!-- TASKS PAGE -->
+    <section class="page" id="page-tasks">
+      <div class="page-header">
+        <div><h1 data-i18n="tasks-title">🗂️ إدارة المهام</h1><p data-i18n="tasks-sub">إنشاء ومتابعة المهام في مكان واحد</p></div>
+      </div>
+
+      <!-- Create Form -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><i class="fa fa-plus-circle" style="color:var(--accent)"></i> <span data-i18n="create-task">إنشاء مهمة</span></div></div>
+        <form id="create-task-form" onsubmit="Q.Tasks.create(event)">
+          <div class="form-grid">
+            <div class="fg full"><label data-i18n="lbl-title">اسم المهمة</label><input type="text" id="f-title" required placeholder="عنوان المهمة..."></div>
+            <div class="fg full"><label data-i18n="lbl-desc">الوصف</label><textarea id="f-desc" placeholder="تفاصيل..."></textarea></div>
+            <div class="fg"><label data-i18n="lbl-cat">التصنيف</label><input type="text" id="f-cat" required placeholder="Backend, UI, Testing..."></div>
+            <div class="fg"><label data-i18n="lbl-priority">الأولوية</label>
+              <select id="f-priority"><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
+            </div>
+            <div class="fg"><label data-i18n="lbl-deadline">التاريخ</label><input type="date" id="f-deadline" required></div>
+          </div>
+          <button type="submit" class="btn" style="margin-top:16px"><i class="fa fa-rocket"></i> <span data-i18n="btn-create">إنشاء المهمة</span></button>
+        </form>
+      </div>
+
+      <!-- Daily Board -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fa fa-sun" style="color:var(--yellow)"></i> <span data-i18n="daily-board">لوحة اليوم</span></div>
+          <div class="date-nav">
+            <button class="date-nav-btn" onclick="Q.DailyBoard.changeDay(-1)"><i class="fa fa-chevron-right"></i></button>
+            <div class="date-display" id="daily-date-display">—</div>
+            <button class="date-nav-btn" onclick="Q.DailyBoard.changeDay(1)"><i class="fa fa-chevron-left"></i></button>
+          </div>
+        </div>
+        <div class="filters-strip">
+          <select class="filter-select" id="db-filter-priority" onchange="Q.DailyBoard.render()">
+            <option value="">كل الأولويات</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+          <select class="filter-select" id="db-filter-status" onchange="Q.DailyBoard.render()">
+            <option value="">كل الحالات</option>
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
+          <select class="filter-select" id="db-filter-cat" onchange="Q.DailyBoard.render()">
+            <option value="">كل التصنيفات</option>
+          </select>
+          <div class="view-toggle" style="margin-inline-start:auto;">
+            <button class="view-btn active" id="db-view-grid" onclick="Q.DailyBoard.setView('grid')"><i class="fa fa-grip"></i></button>
+            <button class="view-btn" id="db-view-list" onclick="Q.DailyBoard.setView('list')"><i class="fa fa-list"></i></button>
+          </div>
+        </div>
+        <div style="margin-top:14px;" id="daily-board-content"></div>
+      </div>
+
+      <!-- Future Tasks -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><i class="fa fa-calendar" style="color:var(--blue)"></i> <span data-i18n="future-tasks">المهام المستقبلية</span></div></div>
+        <div class="daily-grid" id="future-tasks-grid"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS PAGE -->
+    <section class="page" id="page-settings">
+      <div class="page-header"><div><h1 data-i18n="settings-title">⚙️ الإعدادات</h1><p data-i18n="settings-sub">تخصيص المنصة وإدارة البيانات</p></div></div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><i class="fa fa-sliders" style="color:var(--accent)"></i> <span data-i18n="prefs-title">التفضيلات</span></div></div>
+        <div class="settings-section">
+          <div class="setting-row">
+            <div class="setting-info"><h4 data-i18n="s-lang">اللغة</h4><p data-i18n="s-lang-desc">العربية أو الإنجليزية</p></div>
+            <select class="select-styled" id="s-lang-select" onchange="Q.I18n.setLang(this.value)">
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info"><h4 data-i18n="s-theme">المظهر</h4><p data-i18n="s-theme-desc">الوضع الداكن أو الفاتح</p></div>
+            <select class="select-styled" id="s-theme-select" onchange="Q.Interface.setTheme(this.value)">
+              <option value="dark">Dark Mode</option>
+              <option value="light">Light Mode</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Stats -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><i class="fa fa-database" style="color:var(--blue)"></i> <span data-i18n="data-stats">إحصائيات البيانات</span></div></div>
+        <div class="stat-grid" id="data-stats-grid">
+          <div class="stat-item"><div class="stat-val" id="stat-total">—</div><div class="stat-label" data-i18n="stat-total">إجمالي المهام</div></div>
+          <div class="stat-item"><div class="stat-val" id="stat-logs">—</div><div class="stat-label" data-i18n="stat-logs">إجمالي السجلات</div></div>
+          <div class="stat-item"><div class="stat-val" id="stat-cats">—</div><div class="stat-label" data-i18n="stat-cats">التصنيفات</div></div>
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="panel danger-zone">
+        <div class="panel-header"><div class="panel-title"><i class="fa fa-triangle-exclamation"></i> <span data-i18n="danger-zone">منطقة الخطر - إعادة الضبط</span></div></div>
+        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;" data-i18n="danger-desc">استخدم هذه الخيارات بحذر. Soft Reset يعيد الإعدادات فقط. Full Reset يمسح كل شيء.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="Q.Settings.exportData()"><i class="fa fa-download"></i> <span data-i18n="btn-export">تصدير البيانات</span></button>
+          <button class="btn btn-danger btn-sm" onclick="Q.Modal.open('reset-modal')"><i class="fa fa-rotate-left"></i> <span data-i18n="btn-reset">إعادة الضبط</span></button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
